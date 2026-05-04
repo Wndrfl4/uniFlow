@@ -1,0 +1,15 @@
+package com.uniflow.blog.domain.enums;
+
+public enum AuditAction {
+    USER_REGISTERED,
+    USER_LOGIN,
+    POST_CREATED,
+    POST_UPDATED,
+    POST_DELETED,
+    POST_APPROVED,
+    POST_REJECTED,
+    AI_REQUEST,
+    DATA_EXPORT_REQUESTED,
+    DATA_DELETE_REQUESTED,
+    PROFILE_ANONYMIZED
+}
