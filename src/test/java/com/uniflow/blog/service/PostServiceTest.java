@@ -168,7 +168,6 @@ class PostServiceTest {
         request.setContent("New content here");
 
         when(postRepository.findById(10L)).thenReturn(Optional.of(pendingPost));
-        when(userRepository.findByEmail(student.getEmail())).thenReturn(Optional.of(student));
 
         assertThatThrownBy(() -> postService.update(10L, request, student.getEmail()))
                 .isInstanceOf(ApiException.class)
