@@ -52,6 +52,12 @@ app:
     mock-enabled: ${AI_MOCK_ENABLED:true}
   upload:
     dir: ${UPLOAD_DIR:./uploads}
+  security:
+    max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
+    lock-duration-minutes: ${LOCK_DURATION_MINUTES:15}
+    rate-limit-requests: ${RATE_LIMIT_REQUESTS:20}
+    rate-limit-window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
 
 logging:
   level:

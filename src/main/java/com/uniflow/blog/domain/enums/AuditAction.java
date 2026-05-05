@@ -3,6 +3,8 @@ package com.uniflow.blog.domain.enums;
 public enum AuditAction {
     USER_REGISTERED,
     USER_LOGIN,
+    USER_LOGIN_FAILED,
+    USER_LOCKED,
     POST_CREATED,
     POST_UPDATED,
     POST_DELETED,

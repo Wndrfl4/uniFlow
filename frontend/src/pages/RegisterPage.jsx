@@ -1,34 +1,71 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { BookOpen, Eye, EyeOff } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, Check, X } from 'lucide-react'
 
 const roles = [
   { value: 'STUDENT', label: 'Студент' },
   { value: 'TEACHER', label: 'Преподаватель' },
 ]
 
+function usePasswordStrength(password) {
+  const checks = {
+    length:    password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    digit:     /\d/.test(password),
+    special:   /[@$!%*?&_#^]/.test(password),
+  }
+  const passed = Object.values(checks).filter(Boolean).length
+  const strength = passed <= 2 ? 'weak' : passed <= 4 ? 'medium' : 'strong'
+  return { checks, strength, valid: passed === 5 }
+}
+
+const checkLabels = {
+  length:    'Минимум 8 символов',
+  uppercase: 'Заглавная буква (A-Z)',
+  lowercase: 'Строчная буква (a-z)',
+  digit:     'Цифра (0-9)',
+  special:   'Спецсимвол (@$!%*?&_#^)',
+}
+
+const strengthConfig = {
+  weak:   { label: 'Слабый', cls: 'bg-red-400', w: 'w-1/3' },
+  medium: { label: 'Средний', cls: 'bg-amber-400', w: 'w-2/3' },
+  strong: { label: 'Надёжный', cls: 'bg-emerald-500', w: 'w-full' },
+}
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     email: '', password: '', firstName: '', lastName: '', role: 'STUDENT',
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [showChecks, setShowChecks] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
 
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value })
+  const { checks, strength, valid } = usePasswordStrength(form.password)
+  const sc = strengthConfig[strength]
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
     setLoading(true)
     try {
       await register(form)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.message || 'Ошибка при регистрации')
+      const data = err.response?.data
+      if (data?.errors) {
+        setFieldErrors(data.errors)
+      } else {
+        setError(data?.message || 'Ошибка при регистрации')
+      }
     } finally {
       setLoading(false)
     }
@@ -56,17 +93,23 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Имя</label>
-                <input type="text" className="input" placeholder="Иван" value={form.firstName} onChange={set('firstName')} required />
+                <input type="text" className={`input ${fieldErrors.firstName ? 'border-red-300' : ''}`}
+                  placeholder="Иван" value={form.firstName} onChange={set('firstName')} required />
+                {fieldErrors.firstName && <p className="text-xs text-red-500 mt-1">{fieldErrors.firstName}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Фамилия</label>
-                <input type="text" className="input" placeholder="Петров" value={form.lastName} onChange={set('lastName')} required />
+                <input type="text" className={`input ${fieldErrors.lastName ? 'border-red-300' : ''}`}
+                  placeholder="Петров" value={form.lastName} onChange={set('lastName')} required />
+                {fieldErrors.lastName && <p className="text-xs text-red-500 mt-1">{fieldErrors.lastName}</p>}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-              <input type="email" className="input" placeholder="your@university.edu" value={form.email} onChange={set('email')} required />
+              <input type="email" className={`input ${fieldErrors.email ? 'border-red-300' : ''}`}
+                placeholder="your@university.edu" value={form.email} onChange={set('email')} required />
+              {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
             </div>
 
             <div>
@@ -74,11 +117,11 @@ export default function RegisterPage() {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  className="input pr-10"
+                  className={`input pr-10 ${fieldErrors.password ? 'border-red-300' : ''}`}
                   placeholder="Минимум 8 символов"
                   value={form.password}
                   onChange={set('password')}
-                  minLength={8}
+                  onFocus={() => setShowChecks(true)}
                   required
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -86,6 +129,31 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Password strength indicator */}
+              {form.password && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex-1 bg-slate-100 rounded-full h-1.5 mr-2">
+                      <div className={`h-full rounded-full transition-all ${sc.cls} ${sc.w}`} />
+                    </div>
+                    <span className="text-xs text-slate-500 flex-shrink-0">{sc.label}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Password requirements */}
+              {showChecks && form.password && (
+                <div className="mt-2 space-y-1 p-3 bg-slate-50 rounded-xl">
+                  {Object.entries(checks).map(([key, ok]) => (
+                    <div key={key} className={`flex items-center gap-2 text-xs ${ok ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {ok ? <Check className="w-3 h-3 flex-shrink-0" /> : <X className="w-3 h-3 flex-shrink-0" />}
+                      {checkLabels[key]}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
             </div>
 
             <div>
@@ -108,7 +176,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full flex justify-center mt-2">
+            <button type="submit" disabled={loading || !valid} className="btn-primary w-full flex justify-center mt-2">
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

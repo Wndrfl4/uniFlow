@@ -2,6 +2,7 @@ package com.uniflow.blog.service;
 
 import com.uniflow.blog.domain.RefreshToken;
 import com.uniflow.blog.domain.User;
+import com.uniflow.blog.domain.enums.AuditAction;
 import com.uniflow.blog.dto.auth.AuthResponse;
 import com.uniflow.blog.dto.auth.LoginRequest;
 import com.uniflow.blog.dto.auth.RegisterRequest;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -36,6 +39,8 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final LoginAttemptService loginAttemptService;
+    private final AuditService auditService;
 
     @Value("${app.jwt.refresh-expiration-ms}")
     private long refreshTokenDurationMs;
@@ -55,6 +60,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        auditService.log(user.getId(), AuditAction.USER_REGISTERED, "New user registered: " + user.getEmail());
         log.info("Registered new user: {}", user.getEmail());
 
         return buildAuthResponse(user);
@@ -62,14 +68,31 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        String email = request.getEmail().toLowerCase().trim();
+
+        loginAttemptService.checkNotLocked(email);
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (BadCredentialsException | DisabledException ex) {
+            loginAttemptService.recordFailure(email);
+            User userOpt = userRepository.findByEmail(request.getEmail()).orElse(null);
+            if (userOpt != null) {
+                auditService.log(userOpt.getId(), AuditAction.USER_LOGIN_FAILED,
+                        "Failed login attempt for: " + email);
+            }
+            throw ex;
+        }
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
 
+        loginAttemptService.recordSuccess(email);
+        auditService.log(user.getId(), AuditAction.USER_LOGIN, "User logged in: " + email);
         log.info("User logged in: {}", user.getEmail());
+
         return buildAuthResponse(user);
     }
 
