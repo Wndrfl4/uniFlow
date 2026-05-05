@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     const { data } = await client.post('/auth/login', { email, password })
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('refreshToken', data.refreshToken)
-    const userData = { id: data.userId, email: data.email, role: data.role }
+    const userData = { id: data.userId, email: data.email, role: data.role, firstName: data.firstName, lastName: data.lastName }
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     return data
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
     const { data } = await client.post('/auth/register', payload)
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('refreshToken', data.refreshToken)
-    const userData = { id: data.userId, email: data.email, role: data.role }
+    const userData = { id: data.userId, email: data.email, role: data.role, firstName: data.firstName, lastName: data.lastName }
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     return data
