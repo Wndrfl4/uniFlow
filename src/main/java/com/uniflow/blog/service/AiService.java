@@ -55,6 +55,7 @@ public class AiService {
                     .prompt(request.getPrompt())
                     .response(cachedResponse)
                     .cached(true)
+                    .provider(aiClient.getProviderName())
                     .build();
         }
 
@@ -69,6 +70,7 @@ public class AiService {
                 .prompt(request.getPrompt())
                 .response(aiResponse)
                 .cached(false)
+                .provider(aiClient.getProviderName())
                 .build();
     }
 

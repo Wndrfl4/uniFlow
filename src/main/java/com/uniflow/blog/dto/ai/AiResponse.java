@@ -14,4 +14,5 @@ public class AiResponse {
     private String prompt;
     private String response;
     private boolean cached;
+    private String provider;
 }

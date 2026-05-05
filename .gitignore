@@ -1,0 +1,65 @@
+# ===== SECRETS — НИКОГДА НЕ КОММИТИТЬ =====
+.env
+.env.local
+.env.production
+*.env
+secrets/
+**/secrets/
+
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+
+# ===== Spring Boot =====
+application-local.yml
+application-local.properties
+application-secret*.yml
+application-secret*.properties
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/.npm
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+npm-debug.log*
+yarn-error.log*
+
+# ===== IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== Logs =====
+logs/
+*.log
+*.log.*
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== Uploads =====
+uploads/

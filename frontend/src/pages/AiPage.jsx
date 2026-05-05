@@ -2,7 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
 import Spinner from '../components/Spinner'
-import { Bot, Send, Zap, Clock, Sparkles } from 'lucide-react'
+import { Bot, Send, Zap, Clock, Sparkles, Cpu } from 'lucide-react'
+
+const PROVIDER_COLORS = {
+  gemini: 'text-blue-600 bg-blue-50 border-blue-200',
+  groq: 'text-orange-600 bg-orange-50 border-orange-200',
+  openrouter: 'text-purple-600 bg-purple-50 border-purple-200',
+  mock: 'text-slate-500 bg-slate-50 border-slate-200',
+}
 
 export default function AiPage() {
   const { user } = useAuth()
@@ -10,6 +17,7 @@ export default function AiPage() {
   const [messages, setMessages] = useState([])
   const [history, setHistory] = useState([])
   const [remaining, setRemaining] = useState(null)
+  const [providerInfo, setProviderInfo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
@@ -17,12 +25,14 @@ export default function AiPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [histRes, remRes] = await Promise.all([
+        const [histRes, remRes, provRes] = await Promise.all([
           client.get('/ai/history?size=20&sort=createdAt,desc'),
           client.get('/ai/remaining'),
+          client.get('/ai/providers'),
         ])
         setHistory(histRes.data.content ?? [])
         setRemaining(remRes.data.remaining)
+        setProviderInfo(provRes.data)
       } catch {
         /* ignore */
       } finally {
@@ -45,7 +55,12 @@ export default function AiPage() {
     setMessages((prev) => [...prev, { role: 'user', text }])
     try {
       const { data } = await client.post('/ai/ask', { prompt: text })
-      setMessages((prev) => [...prev, { role: 'ai', text: data.response, cached: data.cached }])
+      setMessages((prev) => [...prev, {
+        role: 'ai',
+        text: data.response,
+        cached: data.cached,
+        provider: data.provider,
+      }])
       if (remaining !== null) setRemaining((r) => Math.max(0, r - 1))
     } catch (err) {
       const msg = err.response?.data?.message || 'Произошла ошибка'
@@ -62,9 +77,11 @@ export default function AiPage() {
 
   if (loading) return <Spinner />
 
+  const providerColor = PROVIDER_COLORS[providerInfo?.current] ?? PROVIDER_COLORS.mock
+
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-violet-500" />
@@ -72,13 +89,21 @@ export default function AiPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Задайте вопрос и получите мгновенный ответ</p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-          <Zap className="w-4 h-4 text-amber-500" />
-          <span className="text-sm font-medium text-slate-700">
-            {limitLabel()}
-            {user?.role !== 'ADMIN' && <span className="text-slate-400 font-normal"> запр. осталось</span>}
-            {user?.role === 'ADMIN' && <span className="text-slate-400 font-normal"> безлимитно</span>}
-          </span>
+        <div className="flex items-center gap-2">
+          {providerInfo && (
+            <div className={`flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs font-medium ${providerColor}`}>
+              <Cpu className="w-3.5 h-3.5" />
+              {providerInfo.currentLabel}
+            </div>
+          )}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-medium text-slate-700">
+              {limitLabel()}
+              {user?.role !== 'ADMIN' && <span className="text-slate-400 font-normal"> запр. осталось</span>}
+              {user?.role === 'ADMIN' && <span className="text-slate-400 font-normal"> безлимитно</span>}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -92,6 +117,11 @@ export default function AiPage() {
               </div>
               <p className="text-slate-500 font-medium">Чем могу помочь?</p>
               <p className="text-slate-400 text-sm mt-1">Задайте любой вопрос по учёбе</p>
+              {providerInfo?.current === 'mock' && (
+                <p className="text-amber-600 text-xs mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-xs">
+                  Работает в тестовом режиме. Настройте AI_PROVIDER в .env для реальных ответов.
+                </p>
+              )}
             </div>
           )}
           {messages.map((msg, i) => (
@@ -192,9 +222,14 @@ function ChatBubble({ msg }) {
       </div>
       <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
         <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-        {msg.cached && (
-          <span className="text-xs text-violet-500 font-medium mt-1 block">из кэша</span>
-        )}
+        <div className="flex items-center gap-2 mt-1">
+          {msg.cached && (
+            <span className="text-xs text-violet-500 font-medium">из кэша</span>
+          )}
+          {msg.provider && (
+            <span className="text-xs text-slate-400">{msg.provider}</span>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,12 @@
 package com.uniflow.blog.controller;
 
+import com.uniflow.blog.config.AiProperties;
 import com.uniflow.blog.dto.ai.AiRequest;
 import com.uniflow.blog.dto.ai.AiRequestHistoryDto;
 import com.uniflow.blog.dto.ai.AiResponse;
 import com.uniflow.blog.service.AiService;
+import com.uniflow.blog.util.ai.AiClient;
+import com.uniflow.blog.util.ai.AiProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,6 +19,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,6 +29,8 @@ import java.util.Map;
 public class AiController {
 
     private final AiService aiService;
+    private final AiClient aiClient;
+    private final AiProperties aiProperties;
 
     @PostMapping("/ask")
     @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
@@ -47,5 +54,28 @@ public class AiController {
             @AuthenticationPrincipal UserDetails userDetails) {
         long remaining = aiService.getRemainingRequests(userDetails.getUsername());
         return ResponseEntity.ok(Map.of("remaining", remaining));
+    }
+
+    @GetMapping("/providers")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> getProviders() {
+        List<Map<String, String>> available = Arrays.stream(AiProvider.values())
+                .map(p -> Map.of("id", p.name().toLowerCase(), "label", providerLabel(p)))
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "current", aiProperties.getProvider().name().toLowerCase(),
+                "currentLabel", aiClient.getProviderName(),
+                "available", available
+        ));
+    }
+
+    private String providerLabel(AiProvider provider) {
+        return switch (provider) {
+            case MOCK -> "Mock (локальный)";
+            case GEMINI -> "Google Gemini";
+            case GROQ -> "Groq (Llama/Mixtral)";
+            case OPENROUTER -> "OpenRouter (Free models)";
+        };
     }
 }
