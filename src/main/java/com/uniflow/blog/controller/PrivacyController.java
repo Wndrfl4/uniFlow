@@ -31,7 +31,7 @@ public class PrivacyController {
         return ResponseEntity.ok(privacyService.requestDeletion(userDetails.getUsername()));
     }
 
-    @GetMapping("/deletion-request/status")
+    @GetMapping("/deletion-request")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DeletionRequestDto> getDeletionStatus(
             @AuthenticationPrincipal UserDetails userDetails) {

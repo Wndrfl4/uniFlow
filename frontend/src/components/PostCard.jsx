@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Clock, User } from 'lucide-react'
+import { Clock, User, Heart, MessageCircle } from 'lucide-react'
 
 const statusConfig = {
   PUBLISHED:      { label: 'Опубликован', cls: 'bg-emerald-50 text-emerald-600' },
@@ -22,6 +22,15 @@ export default function PostCard({ post, showStatus = false }) {
             {status.label}
           </span>
         )}
+        {post.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {post.tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="text-xs bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
         <h3 className="font-semibold text-slate-900 text-base mb-2 leading-snug" style={{
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -43,9 +52,19 @@ export default function PostCard({ post, showStatus = false }) {
             <User className="w-3.5 h-3.5" />
             <span>{post.authorName}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{date}</span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Heart className={`w-3.5 h-3.5 ${post.likedByCurrentUser ? 'fill-red-400 text-red-400' : ''}`} />
+              {post.likeCount ?? 0}
+            </span>
+            <span className="flex items-center gap-1">
+              <MessageCircle className="w-3.5 h-3.5" />
+              {post.commentCount ?? 0}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              {date}
+            </span>
           </div>
         </div>
       </div>

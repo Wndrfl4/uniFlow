@@ -11,6 +11,7 @@ import com.uniflow.blog.dto.post.UpdatePostRequest;
 import com.uniflow.blog.exception.ApiException;
 import com.uniflow.blog.exception.ResourceNotFoundException;
 import com.uniflow.blog.mapper.PostMapper;
+import com.uniflow.blog.repository.CommentRepository;
 import com.uniflow.blog.repository.PostRepository;
 import com.uniflow.blog.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
     private final PostMapper postMapper;
 
     @Transactional
@@ -46,45 +48,50 @@ public class PostService {
                 .author(author)
                 .build();
 
+        if (request.getTags() != null) {
+            post.getTags().addAll(request.getTags());
+        }
+
         postRepository.save(post);
         log.info("Post created by {} with status {}", authorEmail, initialStatus);
-        return postMapper.toDto(post);
+        return enrich(postMapper.toDto(post), post, author.getId());
     }
 
     @Transactional(readOnly = true)
-    public Page<PostDto> getPublished(Pageable pageable) {
-        return postRepository.findAllByStatus(PostStatus.PUBLISHED, pageable)
-                .map(postMapper::toDto);
+    public Page<PostDto> getPublished(String q, String tag, String currentEmail, Pageable pageable) {
+        User currentUser = findUserByEmail(currentEmail);
+        return postRepository.search(PostStatus.PUBLISHED, nullIfBlank(q), nullIfBlank(tag), pageable)
+                .map(post -> enrichFromPost(post, currentUser.getId()));
     }
 
     @Transactional(readOnly = true)
     public PostDto getById(Long id, String currentEmail) {
         Post post = findPostById(id);
+        User currentUser = findUserByEmail(currentEmail);
 
         boolean isAuthor = post.getAuthor().getEmail().equals(currentEmail);
         boolean isPublished = post.getStatus() == PostStatus.PUBLISHED;
 
         if (!isPublished && !isAuthor) {
-            User currentUser = findUserByEmail(currentEmail);
             if (currentUser.getRole() != Role.ADMIN) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Access denied to this post");
             }
         }
 
-        return postMapper.toDto(post);
+        return enrichFromPost(post, currentUser.getId());
     }
 
     @Transactional(readOnly = true)
     public Page<PostDto> getMyPosts(String email, Pageable pageable) {
         User author = findUserByEmail(email);
         return postRepository.findAllByAuthorId(author.getId(), pageable)
-                .map(postMapper::toDto);
+                .map(post -> enrichFromPost(post, author.getId()));
     }
 
     @Transactional(readOnly = true)
     public Page<PostDto> getPending(Pageable pageable) {
         return postRepository.findAllByStatus(PostStatus.PENDING_REVIEW, pageable)
-                .map(postMapper::toDto);
+                .map(post -> enrichFromPost(post, null));
     }
 
     @Transactional
@@ -100,9 +107,14 @@ public class PostService {
         post.setContent(request.getContent());
         post.setStatus(PostStatus.PENDING_REVIEW);
         post.setRejectionReason(null);
+        post.getTags().clear();
+        if (request.getTags() != null) {
+            post.getTags().addAll(request.getTags());
+        }
 
+        User author = findUserByEmail(currentEmail);
         log.info("Post {} updated by {}", id, currentEmail);
-        return postMapper.toDto(post);
+        return enrichFromPost(post, author.getId());
     }
 
     @Transactional
@@ -133,7 +145,7 @@ public class PostService {
         post.setRejectionReason(null);
 
         log.info("Post {} approved", id);
-        return postMapper.toDto(post);
+        return enrichFromPost(post, null);
     }
 
     @Transactional
@@ -148,7 +160,39 @@ public class PostService {
         post.setRejectionReason(request.getReason());
 
         log.info("Post {} rejected", id);
-        return postMapper.toDto(post);
+        return enrichFromPost(post, null);
+    }
+
+    @Transactional
+    public PostDto toggleLike(Long postId, String currentEmail) {
+        Post post = findPostById(postId);
+        User user = findUserByEmail(currentEmail);
+
+        boolean alreadyLiked = post.getLikedBy().stream()
+                .anyMatch(u -> u.getId().equals(user.getId()));
+
+        if (alreadyLiked) {
+            post.getLikedBy().removeIf(u -> u.getId().equals(user.getId()));
+        } else {
+            post.getLikedBy().add(user);
+        }
+
+        postRepository.save(post);
+        return enrichFromPost(post, user.getId());
+    }
+
+    private PostDto enrichFromPost(Post post, Long currentUserId) {
+        PostDto dto = postMapper.toDto(post);
+        return enrich(dto, post, currentUserId);
+    }
+
+    private PostDto enrich(PostDto dto, Post post, Long currentUserId) {
+        dto.setCommentCount((int) commentRepository.countByPostId(post.getId()));
+        if (currentUserId != null) {
+            dto.setLikedByCurrentUser(post.getLikedBy().stream()
+                    .anyMatch(u -> u.getId().equals(currentUserId)));
+        }
+        return dto;
     }
 
     private Post findPostById(Long id) {
@@ -165,5 +209,9 @@ public class PostService {
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You are not the author of this post");
         }
+    }
+
+    private String nullIfBlank(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 }

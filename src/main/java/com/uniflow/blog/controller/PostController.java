@@ -37,8 +37,11 @@ public class PostController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<PostDto>> getPublished(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String tag,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(postService.getPublished(pageable));
+        return ResponseEntity.ok(postService.getPublished(q, tag, userDetails.getUsername(), pageable));
     }
 
     @GetMapping("/{id}")
@@ -94,5 +97,13 @@ public class PostController {
             @PathVariable Long id,
             @Valid @RequestBody RejectPostRequest request) {
         return ResponseEntity.ok(postService.reject(id, request));
+    }
+
+    @PostMapping("/{id}/like")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PostDto> toggleLike(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(postService.toggleLike(id, userDetails.getUsername()));
     }
 }

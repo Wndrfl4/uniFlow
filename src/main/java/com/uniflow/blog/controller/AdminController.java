@@ -1,11 +1,16 @@
 package com.uniflow.blog.controller;
 
 import com.uniflow.blog.domain.enums.AuditAction;
+import com.uniflow.blog.domain.enums.PostStatus;
+import com.uniflow.blog.dto.admin.AdminStatsDto;
 import com.uniflow.blog.dto.admin.AuditLogDto;
+import com.uniflow.blog.dto.privacy.DeletionRequestDto;
 import com.uniflow.blog.dto.user.UserDto;
 import com.uniflow.blog.exception.ResourceNotFoundException;
 import com.uniflow.blog.mapper.UserMapper;
 import com.uniflow.blog.repository.AuditLogRepository;
+import com.uniflow.blog.repository.CommentRepository;
+import com.uniflow.blog.repository.PostRepository;
 import com.uniflow.blog.repository.UserRepository;
 import com.uniflow.blog.service.PrivacyService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -25,8 +32,23 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final AuditLogRepository auditLogRepository;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
     private final PrivacyService privacyService;
     private final UserMapper userMapper;
+
+    @GetMapping("/stats")
+    public ResponseEntity<AdminStatsDto> getStats() {
+        AdminStatsDto stats = AdminStatsDto.builder()
+                .totalUsers(userRepository.count())
+                .totalPosts(postRepository.count())
+                .publishedPosts(postRepository.countByStatus(PostStatus.PUBLISHED))
+                .pendingPosts(postRepository.countByStatus(PostStatus.PENDING_REVIEW))
+                .totalComments(commentRepository.count())
+                .totalAiRequests(auditLogRepository.count())
+                .build();
+        return ResponseEntity.ok(stats);
+    }
 
     @GetMapping("/users")
     public ResponseEntity<Page<UserDto>> getAllUsers(
@@ -45,6 +67,17 @@ public class AdminController {
     @PostMapping("/users/{id}/anonymize")
     public ResponseEntity<Void> forceAnonymize(@PathVariable Long id) {
         privacyService.forceAnonymize(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/deletion-requests")
+    public ResponseEntity<List<DeletionRequestDto>> getDeletionRequests() {
+        return ResponseEntity.ok(privacyService.getAllPendingRequests());
+    }
+
+    @PostMapping("/deletion-requests/{id}/approve")
+    public ResponseEntity<Void> approveDeletion(@PathVariable Long id) {
+        privacyService.approveDeletion(id);
         return ResponseEntity.noContent().build();
     }
 

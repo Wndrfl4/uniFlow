@@ -10,5 +10,9 @@ public interface PostMapper {
 
     @Mapping(source = "author.id", target = "authorId")
     @Mapping(expression = "java(post.getAuthor().getFirstName() + \" \" + post.getAuthor().getLastName())", target = "authorName")
+    @Mapping(source = "author.avatarUrl", target = "authorAvatarUrl")
+    @Mapping(expression = "java(post.getLikedBy().size())", target = "likeCount")
+    @Mapping(target = "likedByCurrentUser", ignore = true)
+    @Mapping(target = "commentCount", ignore = true)
     PostDto toDto(Post post);
 }

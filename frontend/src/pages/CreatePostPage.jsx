@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
 import Spinner from '../components/Spinner'
-import { ArrowLeft, Info } from 'lucide-react'
+import { ArrowLeft, Info, X } from 'lucide-react'
 
 export default function CreatePostPage() {
   const { id } = useParams()
@@ -11,6 +11,8 @@ export default function CreatePostPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ title: '', content: '' })
+  const [tags, setTags] = useState([])
+  const [tagInput, setTagInput] = useState('')
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -18,20 +20,39 @@ export default function CreatePostPage() {
   useEffect(() => {
     if (!isEdit) return
     client.get(`/posts/${id}`)
-      .then((r) => setForm({ title: r.data.title, content: r.data.content }))
+      .then((r) => {
+        setForm({ title: r.data.title, content: r.data.content })
+        setTags(r.data.tags ? [...r.data.tags] : [])
+      })
       .catch(() => navigate('/'))
       .finally(() => setLoading(false))
   }, [id, isEdit, navigate])
+
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase().replace(/[^a-zа-яё0-9_]/gi, '')
+    if (t && !tags.includes(t) && tags.length < 5) {
+      setTags([...tags, t])
+    }
+    setTagInput('')
+  }
+
+  const handleTagKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addTag()
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setSaving(true)
     try {
+      const payload = { ...form, tags }
       if (isEdit) {
-        await client.put(`/posts/${id}`, form)
+        await client.put(`/posts/${id}`, payload)
       } else {
-        const { data } = await client.post('/posts', form)
+        const { data } = await client.post('/posts', payload)
         navigate(`/posts/${data.id}`)
         return
       }
@@ -98,6 +119,32 @@ export default function CreatePostPage() {
               minLength={10}
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Теги <span className="text-slate-400 font-normal">(до 5, нажмите Enter или запятую)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {tags.map((tag) => (
+                <span key={tag} className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full">
+                  #{tag}
+                  <button type="button" onClick={() => setTags(tags.filter((t) => t !== tag))}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {tags.length < 5 && (
+              <input
+                type="text"
+                className="input py-2 text-sm"
+                placeholder="Добавить тег..."
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                onBlur={addTag}
+              />
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">

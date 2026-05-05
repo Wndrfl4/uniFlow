@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
 import Spinner from '../components/Spinner'
-import { ArrowLeft, Clock, User, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import CommentSection from '../components/CommentSection'
+import { ArrowLeft, Clock, User, Pencil, Trash2, CheckCircle, XCircle, Heart } from 'lucide-react'
 
 const statusConfig = {
   PUBLISHED:      { label: 'Опубликован', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
@@ -20,6 +21,7 @@ export default function PostDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [likeLoading, setLikeLoading] = useState(false)
 
   useEffect(() => {
     client.get(`/posts/${id}`)
@@ -56,6 +58,16 @@ export default function PostDetailPage() {
     }
   }
 
+  const handleLike = async () => {
+    setLikeLoading(true)
+    try {
+      const { data } = await client.post(`/posts/${id}/like`)
+      setPost(data)
+    } finally {
+      setLikeLoading(false)
+    }
+  }
+
   if (loading) return <Spinner />
   if (!post) return null
 
@@ -75,7 +87,6 @@ export default function PostDetailPage() {
       </Link>
 
       <div className="card p-8">
-        {/* Status */}
         <div className="flex items-center justify-between mb-6">
           <span className={`text-xs font-medium px-3 py-1 rounded-full border ${status.cls}`}>
             {status.label}
@@ -96,17 +107,47 @@ export default function PostDetailPage() {
           </div>
         </div>
 
+        {post.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {post.tags.map((tag) => (
+              <span key={tag} className="text-xs bg-blue-50 text-blue-500 px-2.5 py-1 rounded-full">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
         <h1 className="text-2xl font-bold text-slate-900 mb-4 leading-snug">{post.title}</h1>
 
-        <div className="flex items-center gap-4 text-sm text-slate-400 mb-8 pb-6 border-b border-slate-100">
-          <div className="flex items-center gap-1.5">
-            <User className="w-4 h-4" />
-            <span>{post.authorName}</span>
+        <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
+          <div className="flex items-center gap-4 text-sm text-slate-400">
+            <div className="flex items-center gap-1.5">
+              {post.authorAvatarUrl ? (
+                <img src={post.authorAvatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+              <span>{post.authorName}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4" />
+              <span>{date}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4" />
-            <span>{date}</span>
-          </div>
+          {post.status === 'PUBLISHED' && (
+            <button
+              onClick={handleLike}
+              disabled={likeLoading}
+              className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-xl transition-all ${
+                post.likedByCurrentUser
+                  ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${post.likedByCurrentUser ? 'fill-current' : ''}`} />
+              {post.likeCount ?? 0}
+            </button>
+          )}
         </div>
 
         {post.status === 'REJECTED' && post.rejectionReason && (
@@ -164,6 +205,8 @@ export default function PostDetailPage() {
             )}
           </div>
         )}
+
+        {post.status === 'PUBLISHED' && <CommentSection postId={post.id} />}
       </div>
     </div>
   )

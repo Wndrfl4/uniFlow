@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 import { BookOpen, Sparkles, LogOut, User, Shield, PenSquare, ChevronDown, MessageSquare } from 'lucide-react'
 
 export default function Navbar() {
@@ -80,15 +81,21 @@ export default function Navbar() {
             </Link>
           </div>
 
+          <NotificationBell />
+
           {/* User menu */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                {user.email[0].toUpperCase()}
-              </div>
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                  {user.email[0].toUpperCase()}
+                </div>
+              )}
               <div className="text-left hidden sm:block">
                 <p className="text-sm font-medium text-slate-800 leading-none">
                   {user.email.split('@')[0]}

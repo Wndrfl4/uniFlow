@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import client from '../api/client'
-import { User, Download, Trash2, EyeOff, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react'
+import { User, Download, Trash2, EyeOff, ShieldCheck, AlertCircle, CheckCircle, Camera } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user, logout } = useAuth()
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef(null)
   const [deletionStatus, setDeletionStatus] = useState(null)
   const [loadingDeletion, setLoadingDeletion] = useState(false)
   const [loadingExport, setLoadingExport] = useState(false)
@@ -75,6 +78,25 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await client.post('/users/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setAvatarUrl(data.avatarUrl)
+      flash('Аватар обновлён')
+    } catch {
+      flash('Ошибка при загрузке аватара', 'error')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   const roleLabel = { STUDENT: 'Студент', TEACHER: 'Преподаватель', ADMIN: 'Администратор' }
 
   return (
@@ -100,8 +122,29 @@ export default function ProfilePage() {
       {/* User info */}
       <div className="card p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-100">
-            <User className="w-7 h-7 text-white" />
+          <div className="relative flex-shrink-0">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-100">
+                <User className="w-7 h-7 text-white" />
+              </div>
+            )}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-sm hover:bg-slate-50 transition-colors"
+              title="Сменить аватар"
+            >
+              <Camera className="w-3 h-3 text-slate-500" />
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
           <div>
             <p className="font-semibold text-slate-900 text-lg">

@@ -45,6 +45,9 @@ public class User {
     @Builder.Default
     private boolean anonymized = false;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

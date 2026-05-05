@@ -15,5 +15,6 @@ public class UserDto {
     private Role role;
     private boolean enabled;
     private boolean anonymized;
+    private String avatarUrl;
     private LocalDateTime createdAt;
 }

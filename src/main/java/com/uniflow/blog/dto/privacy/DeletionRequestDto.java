@@ -10,6 +10,9 @@ public class DeletionRequestDto {
 
     private Long id;
     private Long userId;
+    private String userEmail;
+    private String userFirstName;
+    private String userLastName;
     private DeletionStatus status;
     private LocalDateTime requestedAt;
     private LocalDateTime processedAt;

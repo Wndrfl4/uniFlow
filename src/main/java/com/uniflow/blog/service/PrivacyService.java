@@ -140,10 +140,37 @@ public class PrivacyService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
     }
 
+    @Transactional(readOnly = true)
+    public List<DeletionRequestDto> getAllPendingRequests() {
+        return deletionRequestRepository.findAll().stream()
+                .filter(r -> r.getStatus() == DeletionStatus.PENDING)
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Transactional
+    public void approveDeletion(Long requestId) {
+        DeletionRequest request = deletionRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Deletion request not found"));
+
+        performAnonymization(request.getUser());
+
+        request.setStatus(DeletionStatus.COMPLETED);
+        request.setProcessedAt(LocalDateTime.now());
+        deletionRequestRepository.save(request);
+
+        auditService.log(request.getUser().getId(), AuditAction.PROFILE_ANONYMIZED,
+                "Admin approved deletion request #" + requestId);
+        log.info("Deletion request #{} approved", requestId);
+    }
+
     private DeletionRequestDto mapToDto(DeletionRequest request) {
         DeletionRequestDto dto = new DeletionRequestDto();
         dto.setId(request.getId());
         dto.setUserId(request.getUser().getId());
+        dto.setUserEmail(request.getUser().getEmail());
+        dto.setUserFirstName(request.getUser().getFirstName());
+        dto.setUserLastName(request.getUser().getLastName());
         dto.setStatus(request.getStatus());
         dto.setRequestedAt(request.getRequestedAt());
         dto.setProcessedAt(request.getProcessedAt());
