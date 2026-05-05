@@ -50,6 +50,8 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
   ai:
     mock-enabled: ${AI_MOCK_ENABLED:true}
+  upload:
+    dir: ${UPLOAD_DIR:./uploads}
 
 logging:
   level:

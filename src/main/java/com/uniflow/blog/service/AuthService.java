@@ -112,6 +112,7 @@ public class AuthService {
 
     private String rotateRefreshToken(User user) {
         refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.flush();
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)

@@ -34,7 +34,16 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                            "/", "/index.html", "/assets/**",
+                            "/*.js", "/*.css", "/*.ico", "/*.png", "/*.svg",
+                            "/login", "/register",
+                            "/posts/**", "/ai", "/profile", "/admin",
+                            "/messages", "/messages/**"
+                        ).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/api/messages/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
